@@ -5,6 +5,8 @@ declare(strict_types=1);
 const ALLOWED_ORIGINS = [
     'https://mlp-mediziner-beratung.de',
     'https://montolio.de',
+    'https://mlp-anlageimmobilien.de',
+    'https://www.mlp-anlageimmobilien.de',
     'http://127.0.0.1:5174',
     'http://localhost:5174',
 ];

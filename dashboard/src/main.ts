@@ -234,10 +234,6 @@ const DEFAULT_PRESET_ID = 'york-living-default'
 const growthBounds = { min: -2, max: 5, step: 0.1 }
 const equityBounds = { min: 0, max: 30000, step: 500 }
 const depotBounds = { min: 0, max: 12, step: 0.1 }
-const CONSULTATION_EMAIL = 'andreas.peters@mlp.de'
-const CONSULTATION_PHONE_LABEL = 'Direkt anrufen: 0151/19690871'
-const CONSULTATION_PHONE_LINK = 'tel:+4915119690871'
-const BOOKING_URL = 'https://mlp-onlineberatung.flexperto.com/expert?id=782'
 const MAPS_URL = 'https://maps.app.goo.gl/t3fVRBvNyz42xWMp7'
 const ADVISOR_APP_ORIGIN = 'https://mlp-mediziner-beratung.de'
 const CUSTOMER_APP_ORIGIN = 'https://montolio.de'
@@ -282,7 +278,7 @@ const activeCustomerScenarioId = presetContext.customerScenarioId
 const presetManifest = await loadPresetManifest(activePreset)
 const appMode = presetContext.mode
 const defaultConfig = deepCloneConfig(activePreset.calculationConfig)
-const shouldUseStoredConfig = appMode === 'admin' && !presetContext.hasExplicitPresetParam
+const shouldUseStoredConfig = appMode === 'admin'
 const config = shouldUseStoredConfig ? loadStoredConfig(defaultConfig) : deepCloneConfig(defaultConfig)
 const configSections = buildConfigSections()
 const apartments = config.apartments
@@ -745,44 +741,6 @@ app.innerHTML = `
       </section>
     </section>
 
-    <section class="panel contact-panel" aria-labelledby="contact-title">
-      <h2 id="contact-title">Ich bin interessiert!</h2>
-      <p class="lead">
-        Mit einem Klick können Sie direkt per E-Mail um Rückruf bitten, sofort telefonisch
-        Kontakt aufnehmen oder direkt einen Termin buchen.
-      </p>
-      <div class="contact-actions">
-        <a
-          id="consultation-mail-link"
-          class="btn btn-primary btn-link"
-          href="mailto:${CONSULTATION_EMAIL}"
-          aria-label="Beratungsgespräch per E-Mail anfordern"
-        >
-          Beratung per Mail anfordern
-        </a>
-        <a
-          class="btn btn-secondary btn-link"
-          href="${CONSULTATION_PHONE_LINK}"
-          aria-label="Jetzt anrufen unter 0151 19690871"
-        >
-          ${CONSULTATION_PHONE_LABEL}
-        </a>
-        <a
-          class="btn btn-secondary btn-link"
-          href="${BOOKING_URL}"
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label="Direkte Terminbuchung in neuem Tab Öffnen"
-        >
-          Direkte Terminbuchung
-        </a>
-      </div>
-      <p class="small-note">
-        Wenn Sie Unterstützung bei den Eingaben wünschen, rufen Sie gern an oder senden Sie
-        eine kurze E-Mail.
-      </p>
-    </section>
-
     <section class="panel facts-panel">
       <h2>Ein paar schnelle Fakten über Münster.</h2>
       <p class="lead">
@@ -1025,7 +983,6 @@ const applyConfigButton = getElementById<HTMLButtonElement>('apply-config')
 const resetConfigButton = getElementById<HTMLButtonElement>('reset-config')
 const copyConfigButton = getElementById<HTMLButtonElement>('copy-config')
 const copyScenarioButton = getElementById<HTMLButtonElement>('copy-scenario-link')
-const consultationMailLink = getElementById<HTMLAnchorElement>('consultation-mail-link')
 const heroSlideshow = getElementById<HTMLDivElement>('hero-slideshow')
 const heroSlideImage = getElementById<HTMLImageElement>('hero-slide-image')
 const heroSlideCaption = getElementById<HTMLElement>('hero-slide-caption')
@@ -1080,7 +1037,7 @@ if (presetContext.notice) {
   setConfigStatus(presetContext.notice)
   setStatus(presetContext.notice)
 } else if (appMode === 'admin' && presetContext.hasExplicitPresetParam && hasStoredConfig()) {
-  setConfigStatus(`Preset "${activePresetId}" wurde direkt aus der URL geladen. Lokale Browser-Konfiguration bleibt dafür unberücksichtigt.`)
+  setConfigStatus(`Preset "${activePresetId}" wurde aus der URL geladen. Lokale Konfigurationsänderungen bleiben aktiv.`)
 }
 
 incomeInput.addEventListener('input', () => {
@@ -1522,7 +1479,6 @@ function renderProjection(): void {
   setText('out-tax-label', `Steuermodell: ${getTaxTableLabel(result.taxTableMode)}`)
   setOptionalText('liquidity-tax-note', result.taxDisclaimer)
   setText('out-refinance-debt', formatCurrency(result.refinanceDebtBase))
-  updateConsultationMailLink(result)
   renderConfigEditorSummary()
 
   renderBudgetCard(result)
@@ -2444,91 +2400,10 @@ function buildLocalPreviewUrl(
   return `${window.location.origin}${resolveAppBasePath()}?${params.toString()}`
 }
 
-function buildScenarioUrl(
-  apartmentId: ApartmentId,
-  taxTableMode: TaxTableMode,
-  grossAnnualIncomeValue: number,
-  growthRatePercent: number,
-  equityAmount: number,
-  depotRatePercent: number,
-  targetMode: AppMode = appMode,
-  presetId: string = resolveCurrentPresetRouteId(),
-  customerScenarioId: string | null = activeCustomerScenarioId,
-  customerIdentity: CustomerIdentity | null = null,
-): string {
-  const params = new URLSearchParams()
-
-  if (customerScenarioId) {
-    params.set(CUSTOMER_SCENARIO_QUERY_KEY, customerScenarioId)
-  } else {
-    params.set('preset', presetId)
-    params.set('mode', targetMode)
-
-    if (targetMode === 'customer') {
-      appendCustomerIdentityParams(params, customerIdentity)
-    }
-  }
-
-  appendScenarioParams(
-    params,
-    apartmentId,
-    taxTableMode,
-    grossAnnualIncomeValue,
-    growthRatePercent,
-    equityAmount,
-    depotRatePercent,
-  )
-
-  return buildAppUrl(targetMode, params)
-}
-
 function buildCustomerScenarioShareUrl(customerScenarioId: string): string {
   const params = new URLSearchParams()
   params.set(CUSTOMER_SCENARIO_QUERY_KEY, customerScenarioId)
   return buildAppUrl('customer', params)
-}
-
-function updateConsultationMailLink(result: ProjectionResult): void {
-  const customerIdentity = getCurrentCustomerIdentity()
-  const scenarioUrl = buildScenarioUrl(
-    selectedApartmentId,
-    selectedTaxTableMode,
-    annualGrossIncome,
-    annualGrowthRatePercent,
-    investedEquity,
-    depotReturnRatePercent,
-    'customer',
-    resolveDraftPresetId(),
-    activeCustomerScenarioId,
-    customerIdentity,
-  )
-  const subject = 'Beratung zum Immobilieninvestment York Living'
-  const bodyLines = [
-    'Guten Tag Herr Peters,',
-    '',
-    'bitte kontaktieren Sie mich zeitnah, um ein Beratungsgespräch zum Immobilieninvestment York Living zu vereinbaren.',
-    '',
-    'Meine aktuelle Berechnung:',
-  ]
-
-  if (hasCustomerIdentity(customerIdentity)) {
-    bodyLines.push(`- Kunde: ${formatCustomerDisplayName(customerIdentity)}`)
-  }
-
-  bodyLines.push(
-    `- Wohnungsoption: ${result.apartment.label} (${result.apartment.subtitle})`,
-    `- Steuermodell: ${getTaxTableLabel(result.taxTableMode)}`,
-    `- Bruttojahreseinkommen: ${formatCurrency(result.annualGrossIncome)}`,
-    `- Wertentwicklung p.a.: ${formatSignedPercent(result.annualGrowthRate * 100)} %`,
-    `- Eingesetztes Eigenkapital: ${formatCurrency(result.startEquity)}`,
-    '- Steuerdarstellung: modellhafter Steuereffekt, ohne Soli/Kirchensteuer',
-    '',
-    `Szenario-Link: ${scenarioUrl}`,
-  )
-
-  const body = bodyLines.join('\n')
-  const query = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-  consultationMailLink.href = `mailto:${CONSULTATION_EMAIL}?${query}`
 }
 
 function setText(targetId: string, value: string): void {
@@ -4380,6 +4255,10 @@ function resolveAppOrigin(targetMode: AppMode): string {
   if (isLocalRuntime()) {
     return window.location.origin
   }
+  const currentOrigin = window.location.origin
+  if (currentOrigin !== CUSTOMER_APP_ORIGIN && currentOrigin !== ADVISOR_APP_ORIGIN) {
+    return currentOrigin
+  }
   return targetMode === 'customer' ? CUSTOMER_APP_ORIGIN : ADVISOR_APP_ORIGIN
 }
 
@@ -4557,4 +4436,3 @@ function resolvePublicAssetPath(path: string): string {
   const normalizedPath = path.startsWith('/') ? path.slice(1) : path
   return `${normalizedBase}${normalizedPath}`
 }
-

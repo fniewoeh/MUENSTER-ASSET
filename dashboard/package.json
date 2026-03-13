@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --base=/YorkLiving/",
+    "build": "tsc && vite build --base=/1Projekt/",
     "preview": "vite preview",
     "dev:fixed": "vite --host 127.0.0.1 --port 5174 --strictPort",
     "dev:open": "vite --host 127.0.0.1 --port 5174 --strictPort --open"
