@@ -1,0 +1,114 @@
+{
+  "id": "moritz-default",
+  "label": "Moritz Standard",
+  "version": "1.0.0",
+  "updatedAt": "2026-03-13T00:00:00.000Z",
+  "calculationConfig": {
+    "defaultApartmentId": "a",
+    "defaultAnnualGrossIncome": 80000,
+    "incomeBounds": {
+      "min": 0,
+      "max": 300000,
+      "step": 100
+    },
+    "equityModel": {
+      "incomeMonthsFactor": 8,
+      "minEquity": 20000,
+      "maxTotalInvestmentRatio": 0.4
+    },
+    "assumptions": {
+      "rentPerSqm": 13.25,
+      "ancillaryCostRate": 0.02,
+      "vacancyRate": 0,
+      "monthlyManagementFlat": 70,
+      "monthlyMaintenanceFlat": 30,
+      "purchaseYear": 2025,
+      "rentStartYear": 2028,
+      "rentStartQuarter": 4,
+      "afaStartYear": 2028,
+      "afaStartQuarter": 4,
+      "kfwLoanAmount": 100000,
+      "kfwInterestRate": 0.029,
+      "kfwRepaymentRate": 0.024,
+      "kfwGraceYears": 3,
+      "kfwGrantAmount": 0,
+      "bankInterestRate": 0.0485,
+      "bankRepaymentRate": 0.02,
+      "zinsbindungJahre": 10,
+      "refinanceInterestRate": 0.03,
+      "refinanceRepaymentRate": 0.02,
+      "afaBaseShare": 0.94,
+      "depreciationMode": "linear",
+      "annualGrowthRate": 0.02,
+      "years": 20,
+      "afaSchedule": [
+        {
+          "startYear": 1,
+          "endYear": 20,
+          "rate": 0.03
+        },
+        {
+          "startYear": 21,
+          "endYear": 21,
+          "rate": 0
+        }
+      ]
+    },
+    "taxBrackets": [
+      {
+        "maxMonthlyIncome": 2800,
+        "rate": 0.24
+      },
+      {
+        "maxMonthlyIncome": 3800,
+        "rate": 0.29
+      },
+      {
+        "maxMonthlyIncome": 5200,
+        "rate": 0.34
+      },
+      {
+        "maxMonthlyIncome": 7000,
+        "rate": 0.38
+      },
+      {
+        "maxMonthlyIncome": 999999,
+        "rate": 0.42
+      }
+    ],
+    "apartments": [
+      {
+        "id": "a",
+        "label": "Wohnung 58",
+        "subtitle": "2-Zimmer, 46,5 m², 3. OG (TH D)",
+        "size": 46.5,
+        "purchasePrice": 230000,
+        "rentPerSqm": 13,
+        "image": "/floorplans/wohnung-58.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30,
+        "monthlyOtherCost": 0
+      },
+      {
+        "id": "b",
+        "label": "Wohnung 102",
+        "subtitle": "2-Zimmer, 47,0 m², 5. OG (TH F)",
+        "size": 47,
+        "purchasePrice": 237000,
+        "rentPerSqm": 13.5,
+        "image": "/floorplans/wohnung-102.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30,
+        "monthlyOtherCost": 0
+      }
+    ]
+  },
+  "scenarioDefaults": {
+    "apartmentId": "a",
+    "taxTableMode": "grund",
+    "annualGrossIncome": 80000,
+    "annualGrowthRatePercent": 2,
+    "investedEquity": 4600,
+    "depotReturnRatePercent": 6
+  }
+}
