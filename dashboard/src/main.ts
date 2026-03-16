@@ -1414,9 +1414,14 @@ liquidityViewContent.addEventListener('click', (event) => {
 applyConfigButton.addEventListener('click', () => {
   try {
     const validConfig = buildConfigFromForm(configForm)
-    saveStoredConfig(validConfig)
-    setConfigStatus('Konfiguration gespeichert. Seite wird neu geladen.')
-    window.setTimeout(() => window.location.reload(), 250)
+    const nextPreset = buildCurrentPreset(validConfig)
+    applyRuntimePreset(nextPreset)
+    try {
+      saveStoredConfig(validConfig)
+      setConfigStatus('Konfiguration übernommen und lokal gespeichert.')
+    } catch {
+      setConfigStatus('Konfiguration übernommen. Lokales Speichern war in diesem Browser nicht möglich.')
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unbekannter Fehler'
     setConfigStatus(`Konfiguration konnte nicht gespeichert werden: ${message}`, true)
@@ -1500,7 +1505,7 @@ function renderProjection(): void {
   setText('out-wealth20', formatCurrency(result.wealth20))
   setText(
     'out-wealth-gain',
-    `Vermögenszuwachs ggü. Startvermögen: ${formatSignedCurrency(result.wealthGain20)}`,
+    `Vermögenszuwachs inkl. Cashflow ggü. eingesetztem Eigenkapital: ${formatSignedCurrency(result.wealthGain20)}`,
   )
   setText('out-object-value', formatCurrency(result.projectedValue20))
   setOptionalText('out-final-debt', formatCurrency(result.finalRemainingDebt))
@@ -1672,7 +1677,7 @@ function calculateProjection(
     }
 
     const yearlyValue = apartment.purchasePrice * Math.pow(1 + annualGrowthRate, year)
-    const yearlyNetWealth = yearlyValue - remainingDebt + cumulativeCashflow20
+    const yearlyNetWealth = yearlyValue - remainingDebt
     yearlyWealthPath.push(yearlyNetWealth)
 
     depotBalance = depotBalance * (1 + depotReturnRate) + (-yearlyCashflow)
@@ -1703,8 +1708,8 @@ function calculateProjection(
   }
 
   const projectedValue20 = apartment.purchasePrice * Math.pow(1 + annualGrowthRate, assumptions.years)
-  const wealth20 = projectedValue20 - remainingDebt + cumulativeCashflow20
-  const wealthGain20 = wealth20 - initialNetWealth
+  const wealth20 = projectedValue20 - remainingDebt
+  const wealthGain20 = wealth20 + cumulativeCashflow20 - startEquity
   const grossYield = (annualBaseRent / apartment.purchasePrice) * 100
   const yearOneOperatingCosts =
     annualBaseRent * assumptions.vacancyRate + annualManagementCostsFull + annualMaintenanceCostsFull
@@ -1844,7 +1849,6 @@ function renderWealthComposition(result: ProjectionResult, focusIndex: number | 
           propertyValue: result.apartment.purchasePrice,
           cumulativeCashflow: 0,
           remainingDebt: result.initialDebt,
-          netWealth: result.initialNetWealth,
         }
       : (() => {
           const row = result.yearlyLiquidityRows[displayIndex - 1]
@@ -1854,9 +1858,9 @@ function renderWealthComposition(result: ProjectionResult, focusIndex: number | 
             propertyValue: row.propertyValue,
             cumulativeCashflow: row.cumulativeCashflow,
             remainingDebt: row.remainingDebt,
-            netWealth: row.netWealth,
           }
         })()
+  const netWealth = snapshot.propertyValue - snapshot.remainingDebt
   const resultRows = [
     { label: snapshot.propertyValueLabel, value: snapshot.propertyValue },
     { label: 'Kumulierter Cashflow', value: snapshot.cumulativeCashflow },
@@ -1878,8 +1882,8 @@ function renderWealthComposition(result: ProjectionResult, focusIndex: number | 
           )
           .join('')}
         <div class="composition-row composition-total">
-          <span>Nettovermögen</span>
-          <span>${formatCurrency(snapshot.netWealth)}</span>
+          <span>Nettovermögen (Objektwert - Restschuld)</span>
+          <span>${formatCurrency(netWealth)}</span>
         </div>
       </div>
     </div>
