@@ -1273,6 +1273,8 @@ p {
 }
 
 .wealth-subvalue {
+  font-size: 0.98rem;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
 
@@ -1489,20 +1491,33 @@ p {
 
 .liquidity-chart {
   --year-count: 20;
+  --plot-height: 192px;
   display: grid;
   grid-template-columns: 64px 1fr;
   gap: var(--space-12);
-  align-items: stretch;
+  align-items: start;
 }
 
 .liquidity-scale {
-  display: grid;
-  grid-template-rows: 1fr auto 1fr;
-  align-items: center;
-  justify-items: end;
-  padding-bottom: 24px;
+  position: relative;
+  height: var(--plot-height);
   color: var(--ink-soft);
   font-size: 0.72rem;
+}
+
+.liquidity-scale-label {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.liquidity-scale-label:first-child {
+  transform: translateY(0);
+}
+
+.liquidity-scale-label:last-child {
+  transform: translateY(-100%);
 }
 
 .liquidity-chart-plot {
@@ -1510,6 +1525,7 @@ p {
   display: grid;
   grid-template-columns: repeat(var(--year-count), minmax(0, 1fr));
   gap: 6px;
+  align-items: start;
 }
 
 .liquidity-chart-plot::before {
@@ -1517,20 +1533,20 @@ p {
   position: absolute;
   left: 0;
   right: 0;
-  top: 96px;
+  top: var(--zero-line-offset, calc(var(--plot-height) / 2));
   height: 1px;
   background: #c9d3d9;
 }
 
 .liquidity-year {
-  display: grid;
-  grid-template-rows: 192px auto;
-  gap: 8px;
+  position: relative;
+  min-height: calc(var(--plot-height) + 28px);
 }
 
 .liquidity-year-plot {
   position: relative;
-  min-height: 192px;
+  height: var(--plot-height);
+  min-height: var(--plot-height);
 }
 
 .liquidity-bar {
@@ -1542,20 +1558,24 @@ p {
 }
 
 .liquidity-bar-positive {
-  bottom: 50%;
+  bottom: calc(var(--plot-height) - var(--zero-line-offset, calc(var(--plot-height) / 2)));
   height: var(--bar-size);
   border-radius: 8px 8px 0 0;
   background: linear-gradient(180deg, #577b8c 0%, #2f4f5f 100%);
 }
 
 .liquidity-bar-negative {
-  top: 50%;
+  top: var(--zero-line-offset, calc(var(--plot-height) / 2));
   height: var(--bar-size);
   border-radius: 0 0 8px 8px;
   background: linear-gradient(180deg, #d98f7a 0%, #b65f4d 100%);
 }
 
 .liquidity-year-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   color: var(--ink-soft);
   font-size: 0.66rem;
   text-align: center;

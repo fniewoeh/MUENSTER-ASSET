@@ -155,6 +155,7 @@ type ProjectionResult = {
   cumulativeCashflow20: number
   wealth20: number
   wealthGain20: number
+  equityIrr: number | null
   constructionPhaseMonthlyLiquidity: number
   afaPhaseOneMonthlyLiquidity: number
   afaPhaseTwoMonthlyLiquidity: number
@@ -1453,19 +1454,26 @@ function renderProjection(): void {
     depotReturnRatePercent / 100,
   )
   latestProjectionResult = result
+  const positiveCashflow20 = Math.max(result.cumulativeCashflow20, 0)
+  const negativeCashflow20 = Math.max(-result.cumulativeCashflow20, 0)
+  const displayedWealth20 = result.wealth20 + positiveCashflow20
 
   setText('result-headline', `Ihr mögliches Vermögen nach ${projectionYears} Jahren mit ${apartment.label}`)
-  setText('out-wealth20', formatCurrency(result.wealth20))
+  setText('out-wealth20', formatCurrency(displayedWealth20))
   setText(
     'out-wealth-gain',
-    `Vermögenszuwachs ggü. Startvermögen: ${formatSignedCurrency(result.wealthGain20)}`,
+    positiveCashflow20 > 0
+      ? `Enthält ${formatCurrency(positiveCashflow20)} positiven Cashflow und entspricht der Summe aus Cashflow sowie Immobilienwert abzüglich Restschuld.`
+      : negativeCashflow20 > 0
+        ? `Eigenkapitalrendite p.a.: ${formatSignedPercent((result.equityIrr ?? 0) * 100)} %`
+        : `Entspricht Immobilienwert abzüglich Restschuld nach ${projectionYears} Jahren.`,
   )
   setText('out-object-value', formatCurrency(result.projectedValue20))
   setOptionalText('out-final-debt', formatCurrency(result.finalRemainingDebt))
   setOptionalText('out-cashflow20', formatCurrency(result.cumulativeCashflow20))
   setText('out-growth-rate', `${formatSignedPercent(result.annualGrowthRate * 100)} % pro Jahr`)
   setText('out-equity-amount', formatCurrency(result.startEquity))
-  setText('out-path-end', formatCurrency(result.wealth20))
+  setText('out-path-end', formatCurrency(displayedWealth20))
   setText('out-start-equity', formatCurrency(result.initialNetWealth))
   setText(
     'out-total-investment',
@@ -1660,7 +1668,7 @@ function calculateProjection(
     }
 
     const yearlyValue = apartment.purchasePrice * Math.pow(1 + annualGrowthRate, year)
-    const yearlyNetWealth = yearlyValue - remainingDebt + cumulativeCashflow20
+    const yearlyNetWealth = yearlyValue - remainingDebt
     yearlyWealthPath.push(yearlyNetWealth)
 
     depotBalance = depotBalance * (1 + depotReturnRate) + (-yearlyCashflow)
@@ -1691,8 +1699,13 @@ function calculateProjection(
   }
 
   const projectedValue20 = apartment.purchasePrice * Math.pow(1 + annualGrowthRate, assumptions.years)
-  const wealth20 = projectedValue20 - remainingDebt + cumulativeCashflow20
-  const wealthGain20 = wealth20 - initialNetWealth
+  const wealth20 = projectedValue20 - remainingDebt
+  const wealthGain20 = wealth20 + cumulativeCashflow20 - startEquity
+  const equityIrr = calculateEquityIrr(
+    startEquity,
+    yearlyLiquidityRows.map((row) => row.cashflow),
+    wealth20,
+  )
   const grossYield = (annualBaseRent / apartment.purchasePrice) * 100
   const yearOneOperatingCosts =
     annualBaseRent * assumptions.vacancyRate + annualManagementCostsFull + annualMaintenanceCostsFull
@@ -1724,6 +1737,7 @@ function calculateProjection(
     cumulativeCashflow20,
     wealth20,
     wealthGain20,
+    equityIrr,
     constructionPhaseMonthlyLiquidity,
     afaPhaseOneMonthlyLiquidity,
     afaPhaseTwoMonthlyLiquidity,
@@ -1944,16 +1958,54 @@ function renderLiquidityChart(
   result: ProjectionResult,
   basis: 'afterTax' | 'beforeTax',
 ): string {
+  const plotHeight = 192
+  const minAxisGapPx = 28
   const chartRows = result.yearlyLiquidityRows.map((row) => ({
     calendarYear: row.calendarYear,
     monthlyValue:
       basis === 'afterTax' ? row.cashflow / 12 : (row.cashflow - row.taxBenefit) / 12,
   }))
   const values = chartRows.map((row) => row.monthlyValue)
-  const maxAbs = Math.max(...values.map((value) => Math.abs(value)), 1)
   const maxValue = Math.max(...values, 0)
   const minValue = Math.min(...values, 0)
+  const valueSpan = Math.max(maxValue - minValue, 1)
+  const getAxisOffset = (value: number): number => ((maxValue - value) / valueSpan) * plotHeight
+  const zeroLineOffset = getAxisOffset(0)
   const modeLabel = basis === 'afterTax' ? 'Mit Steuereffekt' : 'Ohne Steuereffekt'
+  const rawAxisLabels =
+    maxValue <= 0
+      ? [
+          { value: 0, label: '0 €', required: true },
+          { value: minValue / 2, label: formatCurrency(minValue / 2), required: false },
+          { value: minValue, label: formatCurrency(minValue), required: true },
+        ]
+      : minValue >= 0
+        ? [
+            { value: maxValue, label: formatCurrency(maxValue), required: true },
+            { value: maxValue / 2, label: formatCurrency(maxValue / 2), required: false },
+            { value: 0, label: '0 €', required: true },
+          ]
+        : [
+            { value: maxValue, label: formatCurrency(maxValue), required: true },
+            { value: maxValue / 2, label: formatCurrency(maxValue / 2), required: false },
+            { value: 0, label: '0 €', required: true },
+            { value: minValue / 2, label: formatCurrency(minValue / 2), required: false },
+            { value: minValue, label: formatCurrency(minValue), required: true },
+          ]
+  const axisLabels = rawAxisLabels
+    .map((entry) => ({ ...entry, offset: getAxisOffset(entry.value) }))
+    .filter((entry, index, entries) => entries.findIndex((candidate) => Math.abs(candidate.offset - entry.offset) < 1) === index)
+    .filter((entry, index, entries) => {
+      if (entry.required) {
+        return true
+      }
+      const previous = entries[index - 1]
+      const next = entries[index + 1]
+      return (
+        (!previous || entry.offset - previous.offset >= minAxisGapPx) &&
+        (!next || next.offset - entry.offset >= minAxisGapPx)
+      )
+    })
 
   return `
     <button
@@ -1969,16 +2021,19 @@ function renderLiquidityChart(
         </div>
         <p class="liquidity-chart-range">${formatSignedCurrency(minValue)} bis ${formatSignedCurrency(maxValue)} / Monat</p>
       </div>
-      <div class="liquidity-chart" style="--year-count: ${values.length}">
+      <div class="liquidity-chart" style="--year-count: ${values.length}; --plot-height: ${plotHeight}px">
         <div class="liquidity-scale">
-          <span>${formatCurrency(maxAbs)}</span>
-          <span>0 €</span>
-          <span>-${formatCurrency(maxAbs).replace('-', '')}</span>
+          ${axisLabels
+            .map(
+              (entry) => `<span class="liquidity-scale-label" style="top: ${entry.offset.toFixed(2)}px">${entry.label}</span>`,
+            )
+            .join('')}
         </div>
-        <div class="liquidity-chart-plot">
+        <div class="liquidity-chart-plot" style="--zero-line-offset: ${zeroLineOffset.toFixed(2)}px">
           ${chartRows
             .map((row) => {
-              const height = row.monthlyValue === 0 ? 0 : Math.max((Math.abs(row.monthlyValue) / maxAbs) * 46, 2)
+              const height =
+                row.monthlyValue === 0 ? 0 : Math.max((Math.abs(row.monthlyValue) / valueSpan) * 100, 2)
               const toneClass = row.monthlyValue >= 0 ? 'liquidity-bar-positive' : 'liquidity-bar-negative'
               const yearLabel = String(row.calendarYear).slice(-2)
               return `
@@ -2579,6 +2634,58 @@ function calculateMarginalTaxRate(taxableIncome: number, taxTableMode: TaxTableM
   const taxBase = calculateAnnualIncomeTax(base, taxTableMode)
   const taxUp = calculateAnnualIncomeTax(base + delta, taxTableMode)
   return Math.max((taxUp - taxBase) / delta, 0)
+}
+
+function calculateEquityIrr(
+  startEquity: number,
+  yearlyCashflows: number[],
+  terminalWealth: number,
+): number | null {
+  const cashflows = [-startEquity, ...yearlyCashflows]
+  if (cashflows.length < 2) {
+    return null
+  }
+  cashflows[cashflows.length - 1] += terminalWealth
+
+  const hasPositive = cashflows.some((value) => value > 0)
+  const hasNegative = cashflows.some((value) => value < 0)
+  if (!hasPositive || !hasNegative) {
+    return null
+  }
+
+  const npv = (rate: number): number =>
+    cashflows.reduce((sum, value, index) => sum + value / Math.pow(1 + rate, index), 0)
+
+  let low = -0.9999
+  let high = 0.1
+  let npvLow = npv(low)
+  let npvHigh = npv(high)
+
+  for (let step = 0; step < 60 && npvLow * npvHigh > 0; step += 1) {
+    high = high < 1 ? high * 2 + 0.1 : high * 2
+    npvHigh = npv(high)
+  }
+
+  if (npvLow * npvHigh > 0) {
+    return null
+  }
+
+  for (let iteration = 0; iteration < 120; iteration += 1) {
+    const mid = (low + high) / 2
+    const npvMid = npv(mid)
+    if (Math.abs(npvMid) < 1e-7) {
+      return mid
+    }
+    if (npvLow * npvMid <= 0) {
+      high = mid
+      npvHigh = npvMid
+    } else {
+      low = mid
+      npvLow = npvMid
+    }
+  }
+
+  return (low + high) / 2
 }
 
 function calculateAmortizingDebtService(principal: number, annualInterestRate: number, termYears: number): number {
