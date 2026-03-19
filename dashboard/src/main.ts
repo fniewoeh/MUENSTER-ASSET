@@ -41,7 +41,7 @@ type Assumptions = {
   bankRepaymentRate: number
   zinsbindungJahre: number
   refinanceInterestRate: number
-  refinanceRepaymentRate: number
+  refinanceTermYears: number
   monumentShare: number
   annualGrowthRate: number
   years: number
@@ -1019,6 +1019,7 @@ renderApartmentCards()
 renderTaxTableSelection()
 writeInputValue(annualGrossIncome)
 writeGrowthInputValue(annualGrowthRatePercent)
+updateEquityInputConstraints()
 writeEquityInputValue(investedEquity)
 presetIdInput.value = activePreset.id
 presetLabelInput.value = activePreset.label
@@ -1076,11 +1077,7 @@ growthInput.addEventListener('input', () => {
 })
 
 equityInput.addEventListener('input', () => {
-  investedEquity = clamp(
-    parseNumber(equityInput.value, investedEquity),
-    equityBounds.min,
-    equityBounds.max,
-  )
+  investedEquity = clampEquityForApartment(parseNumber(equityInput.value, investedEquity))
   renderConfigEditorSummary()
   refreshEditorDirtyState()
   renderProjection()
@@ -1431,6 +1428,7 @@ function renderApartmentCards(): void {
       }
       selectedApartmentId = apartmentId
       investedEquity = getDefaultEquityForApartment(apartmentId)
+      updateEquityInputConstraints(apartmentId)
       writeEquityInputValue(investedEquity)
       renderApartmentCards()
       renderConfigEditorSummary()
@@ -1442,6 +1440,9 @@ function renderApartmentCards(): void {
 
 function renderProjection(): void {
   const apartment = getApartment(selectedApartmentId)
+  updateEquityInputConstraints(apartment.id)
+  investedEquity = clampEquityForApartment(investedEquity, apartment.id)
+  writeEquityInputValue(investedEquity)
   const annualGrowthRate = annualGrowthRatePercent / 100
   const result = calculateProjection(
     apartment,
@@ -1489,6 +1490,33 @@ function renderProjection(): void {
   syncUrlState()
 }
 
+function getMaxEquityForApartment(apartmentId: ApartmentId, sourceConfig: CalculationConfig = config): number {
+  const apartment = sourceConfig.apartments.find((entry) => entry.id === apartmentId)
+  if (!apartment) {
+    return equityBounds.min
+  }
+  const ancillaryCosts = apartment.purchasePrice * sourceConfig.assumptions.ancillaryCostRate
+  const totalInvestment = apartment.purchasePrice + ancillaryCosts
+  const rawRatio = sourceConfig.equityModel.maxTotalInvestmentRatio
+  const ratio = rawRatio > 1 ? clamp(rawRatio, 0, 100) / 100 : clamp(rawRatio, 0, 1)
+  return Math.max(equityBounds.min, Math.min(totalInvestment * ratio, totalInvestment))
+}
+
+function getCurrentEquityMax(apartmentId: ApartmentId = selectedApartmentId): number {
+  return getMaxEquityForApartment(apartmentId, config)
+}
+
+function clampEquityForApartment(value: number, apartmentId: ApartmentId = selectedApartmentId): number {
+  return clamp(value, equityBounds.min, getCurrentEquityMax(apartmentId))
+}
+
+function updateEquityInputConstraints(apartmentId: ApartmentId = selectedApartmentId): void {
+  const maxEquity = getCurrentEquityMax(apartmentId)
+  equityInput.min = String(equityBounds.min)
+  equityInput.max = String(Math.round(maxEquity))
+  equityInput.step = String(equityBounds.step)
+}
+
 function calculateProjection(
   apartment: ApartmentOption,
   grossAnnualIncome: number,
@@ -1498,7 +1526,7 @@ function calculateProjection(
   depotReturnRate: number,
 ): ProjectionResult {
   const refinanceInterestRate = assumptions.refinanceInterestRate
-  const refinanceRepaymentRate = assumptions.refinanceRepaymentRate
+  const refinanceTermYears = assumptions.refinanceTermYears
   const annualBaseRent = apartment.size * assumptions.rentPerSqm * 12
   const annualManagementCostsFull = (apartment.monthlyManagement + apartment.monthlyOtherCost) * 12
   const annualMaintenanceCostsFull = apartment.monthlyMaintenance * 12
@@ -1510,7 +1538,7 @@ function calculateProjection(
   const ancillaryCosts = apartment.purchasePrice * assumptions.ancillaryCostRate
   const totalInvestment = apartment.purchasePrice + ancillaryCosts
 
-  const startEquity = clamp(selectedEquity, equityBounds.min, Math.min(equityBounds.max, totalInvestment))
+  const startEquity = clamp(selectedEquity, equityBounds.min, Math.min(getCurrentEquityMax(apartment.id), totalInvestment))
   const initialNetWealth = startEquity - ancillaryCosts
   const debtNeeded = Math.max(totalInvestment - startEquity, 0)
   const kfwLoan = Math.min(debtNeeded, assumptions.kfwLoanAmount)
@@ -1562,7 +1590,11 @@ function calculateProjection(
     if (year === zinsbindungEndProjectionYear + 1) {
       remainingDebt = remainingKfwDebt + remainingBankDebt
       refinanceDebtBase = remainingDebt
-      refinanceTargetDebtService = remainingDebt * (refinanceInterestRate + refinanceRepaymentRate)
+      refinanceTargetDebtService = calculateAmortizingDebtService(
+        remainingDebt,
+        refinanceInterestRate,
+        refinanceTermYears,
+      )
     }
 
     if (year <= zinsbindungEndProjectionYear) {
@@ -2357,11 +2389,7 @@ function hydrateStateFromUrl(): void {
 
   const equity = params.get('equity')
   if (equity) {
-    investedEquity = clamp(
-      parseNumber(equity, investedEquity),
-      equityBounds.min,
-      equityBounds.max,
-    )
+    investedEquity = clampEquityForApartment(parseNumber(equity, investedEquity))
   }
 
   const depot = params.get('depot')
@@ -2426,7 +2454,7 @@ function writeGrowthInputValue(value: number): void {
 }
 
 function writeEquityInputValue(value: number): void {
-  equityInput.value = String(Math.round(value))
+  equityInput.value = String(Math.round(clampEquityForApartment(value)))
 }
 
 function setStatus(message: string): void {
@@ -2553,6 +2581,43 @@ function calculateMarginalTaxRate(taxableIncome: number, taxTableMode: TaxTableM
   return Math.max((taxUp - taxBase) / delta, 0)
 }
 
+function calculateAmortizingDebtService(principal: number, annualInterestRate: number, termYears: number): number {
+  const safePrincipal = Math.max(principal, 0)
+  const safeInterestRate = Math.max(annualInterestRate, 0)
+  const safeTermYears = Math.max(termYears, 1)
+
+  if (safePrincipal === 0) {
+    return 0
+  }
+
+  if (safeInterestRate === 0) {
+    return safePrincipal / safeTermYears
+  }
+
+  return safePrincipal * (safeInterestRate / (1 - Math.pow(1 + safeInterestRate, -safeTermYears)))
+}
+
+function estimateLoanTermYears(interestRate: number, repaymentRate: number): number {
+  const safeInterestRate = Math.max(interestRate, 0)
+  const safeRepaymentRate = Math.max(repaymentRate, 0)
+
+  if (safeRepaymentRate === 0) {
+    return 30
+  }
+
+  if (safeInterestRate === 0) {
+    return Math.max(1, Math.round(1 / safeRepaymentRate))
+  }
+
+  const annuityFactor = safeInterestRate + safeRepaymentRate
+  const ratio = 1 - safeInterestRate / annuityFactor
+  if (ratio <= 0 || ratio >= 1) {
+    return 30
+  }
+
+  return Math.max(1, Math.round(-Math.log(ratio) / Math.log(1 + safeInterestRate)))
+}
+
 function getTaxTableLabel(mode: TaxTableMode): string {
   return mode === 'splitting' ? 'Splittingtabelle' : 'Grundtabelle'
 }
@@ -2560,7 +2625,7 @@ function getTaxTableLabel(mode: TaxTableMode): string {
 function getDefaultEquityForApartment(apartmentId: ApartmentId): number {
   const apartment = getApartment(apartmentId)
   const ancillaryCosts = apartment.purchasePrice * assumptions.ancillaryCostRate
-  return clamp(ancillaryCosts, equityBounds.min, equityBounds.max)
+  return clamp(ancillaryCosts, equityBounds.min, getCurrentEquityMax(apartmentId))
 }
 
 function getCalendarYearForProjectionYear(year: number): number {
@@ -2715,16 +2780,16 @@ function buildConfigSections(): ConfigSection[] {
         },
         {
           type: 'number',
-          id: 'config-refinance-repayment-rate',
-          label: 'Anschlusstilgung',
-          hint: 'Tilgungssatz nach Auslauf der Zinsbindung.',
-          mode: 'percent',
-          min: 0,
-          max: 15,
-          step: 0.05,
-          get: (value) => value.assumptions.refinanceRepaymentRate,
+          id: 'config-refinance-term-years',
+          label: 'Refinanzierungs-Laufzeit',
+          hint: 'Laufzeit in Jahren bis zur vollständigen Rückführung der Anschlussfinanzierung.',
+          mode: 'number',
+          min: 1,
+          max: 40,
+          step: 1,
+          get: (value) => value.assumptions.refinanceTermYears,
           set: (value, next) => {
-            value.assumptions.refinanceRepaymentRate = next
+            value.assumptions.refinanceTermYears = next
           },
         },
       ],
@@ -3515,10 +3580,20 @@ function validateConfig(candidate: unknown): CalculationConfig {
       assumptionsCandidate.refinanceInterestRate,
       'assumptions.refinanceInterestRate',
     ),
-    refinanceRepaymentRate: asNumber(
-      assumptionsCandidate.refinanceRepaymentRate,
-      'assumptions.refinanceRepaymentRate',
-    ),
+    refinanceTermYears: (() => {
+      const candidateTerm = assumptionsCandidate.refinanceTermYears
+      if (candidateTerm !== undefined && candidateTerm !== null) {
+        return asNumber(candidateTerm, 'assumptions.refinanceTermYears')
+      }
+      const legacyRepaymentRate = asNumber(
+        assumptionsCandidate.refinanceRepaymentRate,
+        'assumptions.refinanceRepaymentRate',
+      )
+      return estimateLoanTermYears(
+        asNumber(assumptionsCandidate.refinanceInterestRate, 'assumptions.refinanceInterestRate'),
+        legacyRepaymentRate,
+      )
+    })(),
     monumentShare: asNumber(assumptionsCandidate.monumentShare, 'assumptions.monumentShare'),
     annualGrowthRate: asNumber(
       assumptionsCandidate.annualGrowthRate,
@@ -3878,7 +3953,7 @@ function normalizeScenarioDefaults(candidate: ScenarioDefaults, sourceConfig: Ca
     taxTableMode: candidate.taxTableMode,
     annualGrossIncome: clamp(candidate.annualGrossIncome, sourceConfig.incomeBounds.min, sourceConfig.incomeBounds.max),
     annualGrowthRatePercent: clamp(candidate.annualGrowthRatePercent, growthBounds.min, growthBounds.max),
-    investedEquity: clamp(candidate.investedEquity, equityBounds.min, equityBounds.max),
+    investedEquity: clamp(candidate.investedEquity, equityBounds.min, getMaxEquityForApartment(apartmentId, sourceConfig)),
     depotReturnRatePercent: clamp(candidate.depotReturnRatePercent, depotBounds.min, depotBounds.max),
   }
 }
@@ -3974,7 +4049,7 @@ function getDefaultEquityForApartmentFromConfig(sourceConfig: CalculationConfig,
     return equityBounds.min
   }
   const ancillaryCosts = apartment.purchasePrice * sourceConfig.assumptions.ancillaryCostRate
-  return clamp(ancillaryCosts, equityBounds.min, equityBounds.max)
+  return clamp(ancillaryCosts, equityBounds.min, getMaxEquityForApartment(apartmentId, sourceConfig))
 }
 
 function getScenarioDefaultEquity(apartmentId: ApartmentId): number {
