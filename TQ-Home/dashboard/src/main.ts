@@ -164,6 +164,7 @@ type ProjectionResult = {
   cumulativeCashflow20: number
   wealth20: number
   wealthGain20: number
+  equityIrr: number | null
   constructionPhaseMonthlyLiquidity: number
   afaPhaseOneMonthlyLiquidity: number
   afaPhaseTwoMonthlyLiquidity: number
@@ -247,8 +248,10 @@ const PREVIEW_PRESET_STORAGE_KEY = 'tq-home-preview-preset'
 const PREVIEW_PRESET_QUERY_KEY = 'previewPreset'
 const DEFAULT_PRESET_ID = 'tq-home-default'
 const growthBounds = { min: -2, max: 5, step: 0.1 }
+const growthSliderBounds = { min: -4, max: 4, step: 0.01, center: 2 }
 const equityBounds = { min: 0, max: 30000, step: 500 }
 const depotBounds = { min: 0, max: 12, step: 0.1 }
+const CAPITAL_GAINS_TAX_RATE = 0.2
 const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=Am+Tabakquartier,+28197+Bremen'
 const PROJECT_URL = 'https://www.tabakquartier.com'
 const ADVISOR_APP_ORIGIN = 'https://www.mlp-anlageimmobilien.de'
@@ -259,6 +262,21 @@ const CUSTOMER_LAST_NAME_QUERY_KEY = 'last'
 const CUSTOMER_SCENARIO_DATA_ROOT = '/TQ-Home-data/customer-scenarios'
 const CUSTOMER_SCENARIO_API_PATH = '/api/create-customer-scenario.php'
 const LOCAL_APP_HOSTNAMES = new Set(['127.0.0.1', 'localhost'])
+const IMPRINT_NAME = 'Florian Götz Niewöhner'
+const IMPRINT_TITLES = [
+  'Senior Financial Consultant',
+  'Zertifizierter Nachhaltigkeitsberater (CU)',
+  'Dipl. Kaufmann',
+]
+const IMPRINT_COMPANY = 'MLP Finanzberatung SE'
+const IMPRINT_ADDRESS_LINES = ['Otto-Brenner-Str. 247', '33604 Bielefeld']
+const IMPRINT_EMAIL = 'florian.niewoehner@mlp.de'
+const IMPRINT_PHONE = '0521 94735090'
+const IMPRINT_MOBILE = '0151 12452105'
+const IMPRINT_WEBSITE = 'http://www.mlp-bielefeld.de'
+const IMPRINT_INSURANCE_REGISTRATION = 'D-95Q7-QOCNI-63'
+const IMPRINT_LOAN_REGISTRATION = 'D-W-101-H3TT-55'
+const IMPRINT_REGISTER_URL = 'https://www.vermittlerregister.info'
 const TAX_MODEL_DISCLAIMER =
   'Steuerliche Wirkung modellhaft: Grundlage ist ein angenähertes zvE; Soli und Kirchensteuer sind nicht berücksichtigt.'
 const TAX_MODEL_SHORT_NOTE = 'angenähertes zvE, ohne Soli/Kirchensteuer'
@@ -594,9 +612,9 @@ app.innerHTML = `
             <input
               id="growth-rate"
               type="range"
-              min="${growthBounds.min}"
-              max="${growthBounds.max}"
-              step="${growthBounds.step}"
+              min="${growthSliderBounds.min}"
+              max="${growthSliderBounds.max}"
+              step="${growthSliderBounds.step}"
             />
             <strong id="out-growth-rate" class="slider-value">-</strong>
           </label>
@@ -827,6 +845,76 @@ app.innerHTML = `
         </article>
       </div>
     </section>
+
+    <details class="secondary-details legal-details">
+      <summary class="secondary-details-toggle legal-details-toggle">
+        <div class="legal-panel-head">
+          <p class="eyebrow">Rechtliches</p>
+          <span id="impressum-title">Impressum</span>
+        </div>
+        <small>Auf Klick einblenden</small>
+      </summary>
+      <div class="secondary-details-body">
+        <div class="legal-grid">
+        <article class="legal-card">
+          <h3>Anbieter</h3>
+          <p>${escapeHtml(IMPRINT_NAME)}</p>
+          ${IMPRINT_TITLES.map((title) => `<p>${escapeHtml(title)}</p>`).join('')}
+        </article>
+        <article class="legal-card">
+          <h3>Geschaeftsadresse</h3>
+          <p>${escapeHtml(IMPRINT_COMPANY)}</p>
+          <p>${escapeHtml(IMPRINT_ADDRESS_LINES[0])}</p>
+          <p>${escapeHtml(IMPRINT_ADDRESS_LINES[1])}</p>
+        </article>
+        <article class="legal-card">
+          <h3>Kontakt</h3>
+          <p>
+            <a class="legal-link" href="tel:${escapeHtml(IMPRINT_PHONE.replace(/\s+/g, ''))}">Telefon: ${escapeHtml(IMPRINT_PHONE)}</a>
+          </p>
+          <p>
+            <a class="legal-link" href="tel:${escapeHtml(IMPRINT_MOBILE.replace(/\s+/g, ''))}">Mobil: ${escapeHtml(IMPRINT_MOBILE)}</a>
+          </p>
+          <p>
+            <a class="legal-link" href="mailto:${escapeHtml(IMPRINT_EMAIL)}">${escapeHtml(IMPRINT_EMAIL)}</a>
+          </p>
+          <p>
+            <a class="legal-link" href="${escapeHtml(IMPRINT_WEBSITE)}" target="_blank" rel="noreferrer noopener">${escapeHtml(IMPRINT_WEBSITE)}</a>
+          </p>
+        </article>
+        <article class="legal-card">
+          <h3>Versicherungsmakler</h3>
+          <p>Im Vermittlerregister als Versicherungsmakler mit Erlaubnis nach § 34d Abs. 1 GewO eingetragen.</p>
+          <p>Registrierungsnummer: ${escapeHtml(IMPRINT_INSURANCE_REGISTRATION)}</p>
+          <p>Gemeinsame Registerstelle nach § 11a GewO: Deutscher Industrie- und Handelskammertag (DIHK), Breite Straße 29, 10178 Berlin, Telefon: 030 20308-0</p>
+          <p>Status: Versicherungsmakler (nicht Versicherungsvertreter)</p>
+          <p>
+            <a class="legal-link" href="${escapeHtml(IMPRINT_REGISTER_URL)}" target="_blank" rel="noreferrer noopener">${escapeHtml(IMPRINT_REGISTER_URL)}</a>
+          </p>
+        </article>
+        <article class="legal-card">
+          <h3>Immobilienmakler</h3>
+          <p>Erlaubnis nach § 34c GewO</p>
+          <p>Erteilt durch: Stadt Bielefeld</p>
+        </article>
+        <article class="legal-card">
+          <h3>Darlehensvermittler</h3>
+          <p>Erlaubnis nach § 34i GewO</p>
+          <p>Erteilt durch: Industrie- und Handelskammer Bielefeld</p>
+          <p>Registrierungsnummer: ${escapeHtml(IMPRINT_LOAN_REGISTRATION)}</p>
+          <p>
+            <a class="legal-link" href="${escapeHtml(IMPRINT_REGISTER_URL)}" target="_blank" rel="noreferrer noopener">${escapeHtml(IMPRINT_REGISTER_URL)}</a>
+          </p>
+        </article>
+        <article class="legal-card">
+          <h3>Verantwortlich fuer den Inhalt</h3>
+          <p>${escapeHtml(IMPRINT_NAME)}</p>
+          <p>${escapeHtml(IMPRINT_ADDRESS_LINES[0])}</p>
+          <p>${escapeHtml(IMPRINT_ADDRESS_LINES[1])}</p>
+        </article>
+        </div>
+      </div>
+    </details>
   </main>
 
   <div id="customer-link-modal" class="dialog-modal" aria-hidden="true"${appMode === 'customer' ? ' hidden' : ''}>
@@ -1103,6 +1191,7 @@ renderApartmentCards()
 renderTaxTableSelection()
 writeInputValue(annualGrossIncome)
 writeGrowthInputValue(annualGrowthRatePercent)
+updateEquityInputConstraints()
 writeEquityInputValue(investedEquity)
 presetIdInput.value = activePreset.id
 presetLabelInput.value = activePreset.label
@@ -1150,7 +1239,7 @@ taxTableInputs.forEach((input) => {
 
 growthInput.addEventListener('input', () => {
   annualGrowthRatePercent = clamp(
-    parseNumber(growthInput.value, annualGrowthRatePercent),
+    sliderValueToGrowthRate(parseNumber(growthInput.value, growthRateToSliderValue(annualGrowthRatePercent))),
     growthBounds.min,
     growthBounds.max,
   )
@@ -1160,11 +1249,7 @@ growthInput.addEventListener('input', () => {
 })
 
 equityInput.addEventListener('input', () => {
-  investedEquity = clamp(
-    parseNumber(equityInput.value, investedEquity),
-    equityBounds.min,
-    equityBounds.max,
-  )
+  investedEquity = clampEquityForApartment(parseNumber(equityInput.value, investedEquity))
   renderConfigEditorSummary()
   refreshEditorDirtyState()
   renderProjection()
@@ -1569,6 +1654,7 @@ function renderApartmentCards(): void {
       }
       selectedApartmentId = apartmentId
       investedEquity = getDefaultEquityForApartment(apartmentId)
+      updateEquityInputConstraints(apartmentId)
       writeEquityInputValue(investedEquity)
       renderApartmentCards()
       renderConfigEditorSummary()
@@ -1593,6 +1679,9 @@ function renderApartmentCards(): void {
 
 function renderProjection(): void {
   const apartment = getApartment(selectedApartmentId)
+  updateEquityInputConstraints(apartment.id)
+  investedEquity = clampEquityForApartment(investedEquity, apartment.id)
+  writeEquityInputValue(investedEquity)
   const annualGrowthRate = annualGrowthRatePercent / 100
   const result = calculateProjection(
     apartment,
@@ -1603,19 +1692,26 @@ function renderProjection(): void {
     depotReturnRatePercent / 100,
   )
   latestProjectionResult = result
+  const positiveCashflow20 = Math.max(result.cumulativeCashflow20, 0)
+  const negativeCashflow20 = Math.max(-result.cumulativeCashflow20, 0)
+  const displayedWealth20 = result.wealth20 + positiveCashflow20
 
   setText('result-headline', `Ihr mögliches Vermögen nach ${projectionYears} Jahren mit ${apartment.label}`)
-  setText('out-wealth20', formatCurrency(result.wealth20))
+  setText('out-wealth20', formatCurrency(displayedWealth20))
   setText(
     'out-wealth-gain',
-    `Vermögenszuwachs inkl. Cashflow ggü. eingesetztem Eigenkapital: ${formatSignedCurrency(result.wealthGain20)}`,
+    positiveCashflow20 > 0
+      ? `Enthält ${formatCurrency(positiveCashflow20)} positiven Cashflow und entspricht der Summe aus Cashflow sowie Immobilienwert abzüglich Restschuld.`
+      : negativeCashflow20 > 0
+        ? `Eigenkapitalrendite p.a.: ${formatSignedPercent((result.equityIrr ?? 0) * 100)} %`
+        : `Entspricht Immobilienwert abzüglich Restschuld nach ${projectionYears} Jahren.`,
   )
   setText('out-object-value', formatCurrency(result.projectedValue20))
   setOptionalText('out-final-debt', formatCurrency(result.finalRemainingDebt))
   setOptionalText('out-cashflow20', formatCurrency(result.cumulativeCashflow20))
   setText('out-growth-rate', `${formatSignedPercent(result.annualGrowthRate * 100)} % pro Jahr`)
   setText('out-equity-amount', formatCurrency(result.startEquity))
-  setText('out-path-end', formatCurrency(result.wealth20))
+  setText('out-path-end', formatCurrency(displayedWealth20))
   setText('out-start-equity', formatCurrency(result.initialNetWealth))
   setText(
     'out-total-investment',
@@ -1640,6 +1736,33 @@ function renderProjection(): void {
   syncUrlState()
 }
 
+function getMaxEquityForApartment(apartmentId: ApartmentId, sourceConfig: CalculationConfig = config): number {
+  const apartment = sourceConfig.apartments.find((entry) => entry.id === apartmentId)
+  if (!apartment) {
+    return equityBounds.min
+  }
+  const ancillaryCosts = apartment.purchasePrice * sourceConfig.assumptions.ancillaryCostRate
+  const totalInvestment = apartment.purchasePrice + ancillaryCosts
+  const rawRatio = sourceConfig.equityModel.maxTotalInvestmentRatio
+  const ratio = rawRatio > 1 ? clamp(rawRatio, 0, 100) / 100 : clamp(rawRatio, 0, 1)
+  return Math.max(equityBounds.min, Math.min(totalInvestment * ratio, totalInvestment))
+}
+
+function getCurrentEquityMax(apartmentId: ApartmentId = selectedApartmentId): number {
+  return getMaxEquityForApartment(apartmentId, config)
+}
+
+function clampEquityForApartment(value: number, apartmentId: ApartmentId = selectedApartmentId): number {
+  return clamp(value, equityBounds.min, getCurrentEquityMax(apartmentId))
+}
+
+function updateEquityInputConstraints(apartmentId: ApartmentId = selectedApartmentId): void {
+  const maxEquity = getCurrentEquityMax(apartmentId)
+  equityInput.min = String(equityBounds.min)
+  equityInput.max = String(Math.round(maxEquity))
+  equityInput.step = String(equityBounds.step)
+}
+
 function calculateProjection(
   apartment: ApartmentOption,
   grossAnnualIncome: number,
@@ -1662,7 +1785,7 @@ function calculateProjection(
   const ancillaryCosts = apartment.purchasePrice * assumptions.ancillaryCostRate
   const totalInvestment = apartment.purchasePrice + ancillaryCosts
 
-  const startEquity = clamp(selectedEquity, equityBounds.min, Math.min(equityBounds.max, totalInvestment))
+  const startEquity = clamp(selectedEquity, equityBounds.min, Math.min(getCurrentEquityMax(apartment.id), totalInvestment))
   const initialNetWealth = startEquity - ancillaryCosts
   const debtNeeded = Math.max(totalInvestment - startEquity, 0)
   const kfwLoan = Math.min(debtNeeded, assumptions.kfwLoanAmount)
@@ -1680,7 +1803,7 @@ function calculateProjection(
   const depreciationBase = apartment.purchasePrice * assumptions.afaBaseShare
   const specialAfa7bBase = apartment.size * assumptions.specialAfa7bPerSqm
   const kfwFixedRateYears = 10
-  const bankZinsbindungEndProjectionYear = assumptions.bankZinsbindungJahre + 1
+  const bankZinsbindungEndProjectionYear = assumptions.bankZinsbindungJahre
   const constructionInterestLoad =
     (kfwLoan * 0.5) * assumptions.kfwInterestRate + (bankLoan * 0.5) * assumptions.bankInterestRate
   const constructionPhaseMonthlyLiquidity = -(constructionInterestLoad / 12)
@@ -1703,7 +1826,8 @@ function calculateProjection(
   const yearlyWealthPath: number[] = [initialNetWealth]
   const yearlyDepotPath: number[] = [startEquity]
   const yearlyLiquidityRows: YearlyLiquidityRow[] = []
-  let depotBalance = startEquity
+  let depotBalanceGross = startEquity
+  let depotCostBasis = startEquity
 
   for (let year = 1; year <= assumptions.years; year += 1) {
     const calendarYear = getCalendarYearForProjectionYear(year)
@@ -1843,8 +1967,10 @@ function calculateProjection(
     const yearlyNetWealth = yearlyValue - remainingDebt
     yearlyWealthPath.push(yearlyNetWealth)
 
-    depotBalance = depotBalance * (1 + depotReturnRate) + (-yearlyCashflow)
-    yearlyDepotPath.push(depotBalance)
+    const depotContribution = -yearlyCashflow
+    depotBalanceGross = depotBalanceGross * (1 + depotReturnRate) + depotContribution
+    depotCostBasis = Math.max(depotCostBasis + depotContribution, 0)
+    yearlyDepotPath.push(calculateNetDepotValue(depotBalanceGross, depotCostBasis))
 
     yearlyLiquidityRows.push({
       year,
@@ -1873,6 +1999,11 @@ function calculateProjection(
   const projectedValue20 = apartment.purchasePrice * Math.pow(1 + annualGrowthRate, assumptions.years)
   const wealth20 = projectedValue20 - remainingDebt
   const wealthGain20 = wealth20 + cumulativeCashflow20 - startEquity
+  const equityIrr = calculateEquityIrr(
+    startEquity,
+    yearlyLiquidityRows.map((row) => row.cashflow),
+    wealth20,
+  )
   const grossYield = (annualBaseRent / apartment.purchasePrice) * 100
   const yearOneOperatingCosts =
     annualBaseRent * assumptions.vacancyRate + annualDeductibleCostsFull + annualReserveCostsFull
@@ -1901,6 +2032,7 @@ function calculateProjection(
     cumulativeCashflow20,
     wealth20,
     wealthGain20,
+    equityIrr,
     constructionPhaseMonthlyLiquidity,
     afaPhaseOneMonthlyLiquidity,
     afaPhaseTwoMonthlyLiquidity,
@@ -1913,7 +2045,7 @@ function calculateProjection(
     yearlyWealthPath,
     yearlyLiquidityRows,
     depotReturnRate,
-    depotWealth20: depotBalance,
+    depotWealth20: calculateNetDepotValue(depotBalanceGross, depotCostBasis),
     yearlyDepotPath,
     finalRemainingDebt: remainingDebt,
   }
@@ -1948,7 +2080,7 @@ function renderComparisonCard(result: ProjectionResult): void {
       <p class="comparison-title">Immobilie vs. Vermögensdepot nach ${projectionYears} Jahren</p>
       <p class="comparison-copy">
         Annahme: identisches Startkapital und dieselben jährlichen Überschüsse oder Zusatzaufwände
-        wie im Immobilien-Szenario.
+        wie im Immobilien-Szenario sowie pauschal 20 % Kapitalertragsteuer auf Depotgewinne.
       </p>
       <div class="comparison-columns">
         <div id="comp-col-property" class="comparison-col">
@@ -2623,11 +2755,7 @@ function hydrateStateFromUrl(): void {
 
   const equity = params.get('equity')
   if (equity) {
-    investedEquity = clamp(
-      parseNumber(equity, investedEquity),
-      equityBounds.min,
-      equityBounds.max,
-    )
+    investedEquity = clampEquityForApartment(parseNumber(equity, investedEquity))
   }
 
   const depot = params.get('depot')
@@ -2688,11 +2816,11 @@ function writeInputValue(value: number): void {
 }
 
 function writeGrowthInputValue(value: number): void {
-  growthInput.value = String(value)
+  growthInput.value = String(growthRateToSliderValue(value))
 }
 
 function writeEquityInputValue(value: number): void {
-  equityInput.value = String(Math.round(value))
+  equityInput.value = String(Math.round(clampEquityForApartment(value)))
 }
 
 function setStatus(message: string): void {
@@ -2800,6 +2928,87 @@ function calculateMarginalTaxRate(taxableIncome: number, taxTableMode: TaxTableM
   return Math.max((taxUp - taxBase) / delta, 0)
 }
 
+function growthRateToSliderValue(value: number): number {
+  const clampedValue = clamp(value, growthBounds.min, growthBounds.max)
+  if (clampedValue <= growthSliderBounds.center) {
+    const lowerRange = growthSliderBounds.center - growthBounds.min
+    const ratio = lowerRange === 0 ? 0 : (clampedValue - growthSliderBounds.center) / lowerRange
+    return ratio * Math.abs(growthSliderBounds.min)
+  }
+
+  const upperRange = growthBounds.max - growthSliderBounds.center
+  const ratio = upperRange === 0 ? 0 : (clampedValue - growthSliderBounds.center) / upperRange
+  return ratio * growthSliderBounds.max
+}
+
+function sliderValueToGrowthRate(value: number): number {
+  const clampedSliderValue = clamp(value, growthSliderBounds.min, growthSliderBounds.max)
+  if (clampedSliderValue <= 0) {
+    const ratio = growthSliderBounds.min === 0 ? 0 : clampedSliderValue / Math.abs(growthSliderBounds.min)
+    return growthSliderBounds.center + ratio * (growthSliderBounds.center - growthBounds.min)
+  }
+
+  const ratio = growthSliderBounds.max === 0 ? 0 : clampedSliderValue / growthSliderBounds.max
+  return growthSliderBounds.center + ratio * (growthBounds.max - growthSliderBounds.center)
+}
+
+function calculateNetDepotValue(grossDepotValue: number, costBasis: number): number {
+  const taxableGain = Math.max(grossDepotValue - costBasis, 0)
+  return grossDepotValue - taxableGain * CAPITAL_GAINS_TAX_RATE
+}
+
+function calculateEquityIrr(
+  startEquity: number,
+  yearlyCashflows: number[],
+  terminalWealth: number,
+): number | null {
+  const cashflows = [-startEquity, ...yearlyCashflows]
+  if (cashflows.length < 2) {
+    return null
+  }
+  cashflows[cashflows.length - 1] += terminalWealth
+
+  const hasPositive = cashflows.some((value) => value > 0)
+  const hasNegative = cashflows.some((value) => value < 0)
+  if (!hasPositive || !hasNegative) {
+    return null
+  }
+
+  const npv = (rate: number): number =>
+    cashflows.reduce((sum, value, index) => sum + value / Math.pow(1 + rate, index), 0)
+
+  let low = -0.9999
+  let high = 0.1
+  let npvLow = npv(low)
+  let npvHigh = npv(high)
+
+  for (let step = 0; step < 60 && npvLow * npvHigh > 0; step += 1) {
+    high = high < 1 ? high * 2 + 0.1 : high * 2
+    npvHigh = npv(high)
+  }
+
+  if (npvLow * npvHigh > 0) {
+    return null
+  }
+
+  for (let iteration = 0; iteration < 120; iteration += 1) {
+    const mid = (low + high) / 2
+    const npvMid = npv(mid)
+    if (Math.abs(npvMid) < 1e-7) {
+      return mid
+    }
+    if (npvLow * npvMid <= 0) {
+      high = mid
+      npvHigh = npvMid
+    } else {
+      low = mid
+      npvLow = npvMid
+    }
+  }
+
+  return (low + high) / 2
+}
+
 function getTaxTableLabel(mode: TaxTableMode): string {
   return mode === 'splitting' ? 'Splittingtabelle' : 'Grundtabelle'
 }
@@ -2807,7 +3016,7 @@ function getTaxTableLabel(mode: TaxTableMode): string {
 function getDefaultEquityForApartment(apartmentId: ApartmentId): number {
   const apartment = getApartment(apartmentId)
   const ancillaryCosts = apartment.purchasePrice * assumptions.ancillaryCostRate
-  return clamp(ancillaryCosts, equityBounds.min, equityBounds.max)
+  return clamp(ancillaryCosts, equityBounds.min, getCurrentEquityMax(apartmentId))
 }
 
 function getCalendarYearForProjectionYear(year: number): number {
@@ -4240,7 +4449,7 @@ function normalizeScenarioDefaults(candidate: ScenarioDefaults, sourceConfig: Ca
     taxTableMode: candidate.taxTableMode,
     annualGrossIncome: clamp(candidate.annualGrossIncome, sourceConfig.incomeBounds.min, sourceConfig.incomeBounds.max),
     annualGrowthRatePercent: clamp(candidate.annualGrowthRatePercent, growthBounds.min, growthBounds.max),
-    investedEquity: clamp(candidate.investedEquity, equityBounds.min, equityBounds.max),
+    investedEquity: clamp(candidate.investedEquity, equityBounds.min, getMaxEquityForApartment(apartmentId, sourceConfig)),
     depotReturnRatePercent: clamp(candidate.depotReturnRatePercent, depotBounds.min, depotBounds.max),
   }
 }
@@ -4336,7 +4545,7 @@ function getDefaultEquityForApartmentFromConfig(sourceConfig: CalculationConfig,
     return equityBounds.min
   }
   const ancillaryCosts = apartment.purchasePrice * sourceConfig.assumptions.ancillaryCostRate
-  return clamp(ancillaryCosts, equityBounds.min, equityBounds.max)
+  return clamp(ancillaryCosts, equityBounds.min, getMaxEquityForApartment(apartmentId, sourceConfig))
 }
 
 function getScenarioDefaultEquity(apartmentId: ApartmentId): number {
