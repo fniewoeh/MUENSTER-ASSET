@@ -1,0 +1,184 @@
+{
+  "id": "krampnitzcarre-ndgl",
+  "label": "Krampnitzcarre Niedergelassen",
+  "version": "2026.04.11-0034",
+  "updatedAt": "2026-04-11T00:34:01+02:00",
+  "calculationConfig": {
+    "defaultApartmentId": "we80",
+    "defaultAnnualGrossIncome": 180000,
+    "incomeBounds": {
+      "min": 0,
+      "max": 500000,
+      "step": 100
+    },
+    "equityModel": {
+      "incomeMonthsFactor": 8,
+      "minEquity": 0,
+      "maxTotalInvestmentRatio": 1
+    },
+    "assumptions": {
+      "rentPerSqm": 18,
+      "ancillaryCostRate": 0.085,
+      "vacancyRate": 0,
+      "monthlyManagementFlat": 70,
+      "monthlyMaintenanceFlat": 30,
+      "purchaseYear": 2027,
+      "rentStartYear": 2028,
+      "rentStartQuarter": 4,
+      "afaStartYear": 2028,
+      "afaStartQuarter": 4,
+      "kfwLoanAmount": 150000,
+      "kfwInterestRate": 0.029,
+      "kfwRepaymentRate": 0.024,
+      "kfwGraceYears": 3,
+      "kfwGrantAmount": 37500,
+      "kfwGrantRate": 0.25,
+      "bankInterestRate": 0.0485,
+      "bankRepaymentRate": 0.02,
+      "zinsbindungJahre": 10,
+      "refinanceInterestRate": 0.03,
+      "refinanceTermYears": 28,
+      "landShare": 0.12,
+      "oldBuildingShare": 0.16,
+      "constructionShare": 0.1,
+      "monumentShare": 0.72,
+      "ordinaryAfaRate": 0.02,
+      "annualGrowthRate": 0.02,
+      "years": 20,
+      "afaSchedule": [
+        {
+          "startYear": 1,
+          "endYear": 8,
+          "rate": 0.09
+        },
+        {
+          "startYear": 9,
+          "endYear": 12,
+          "rate": 0.07
+        }
+      ]
+    },
+    "taxBrackets": [
+      {
+        "maxMonthlyIncome": 2800,
+        "rate": 0.24
+      },
+      {
+        "maxMonthlyIncome": 3800,
+        "rate": 0.29
+      },
+      {
+        "maxMonthlyIncome": 5200,
+        "rate": 0.34
+      },
+      {
+        "maxMonthlyIncome": 7000,
+        "rate": 0.38
+      },
+      {
+        "maxMonthlyIncome": 999999,
+        "rate": 0.42
+      }
+    ],
+    "apartments": [
+      {
+        "id": "we13-99",
+        "label": "WE 13+99 im GG",
+        "subtitle": "2-Zimmer, Wohnung 45,25 m² + TE 99 30,80 m²",
+        "rooms": 2,
+        "size": 45.25,
+        "rentPerSqm": 18,
+        "accessoryLabel": "TE 99",
+        "accessoryArea": 30.8,
+        "accessoryRentPerSqm": 12,
+        "purchasePrice": 576000,
+        "image": "/floorplans/we13-99.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      },
+      {
+        "id": "we14-94",
+        "label": "WE 14+94 im GG",
+        "subtitle": "2-Zimmer, Wohnung 45,05 m² + TE 94 33,10 m²",
+        "rooms": 2,
+        "size": 45.05,
+        "rentPerSqm": 18,
+        "accessoryLabel": "TE 94",
+        "accessoryArea": 33.1,
+        "accessoryRentPerSqm": 12,
+        "purchasePrice": 588000,
+        "image": "/floorplans/we14-94.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      },
+      {
+        "id": "we58-97",
+        "label": "WE 58+97 im 1. OG",
+        "subtitle": "2-Zimmer, Wohnung 36,20 m² + TE 97 18,40 m²",
+        "rooms": 2,
+        "size": 36.2,
+        "rentPerSqm": 18,
+        "accessoryLabel": "TE 97",
+        "accessoryArea": 18.4,
+        "accessoryRentPerSqm": 12,
+        "purchasePrice": 424000,
+        "image": "/floorplans/we58-97.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      },
+      {
+        "id": "we74-98",
+        "label": "WE 74+98 im DG",
+        "subtitle": "2-Zimmer, Wohnung 52,20 m² + TE 98 28,50 m²",
+        "rooms": 2,
+        "size": 52.2,
+        "rentPerSqm": 18,
+        "accessoryLabel": "TE 98",
+        "accessoryArea": 28.5,
+        "accessoryRentPerSqm": 12,
+        "purchasePrice": 624000,
+        "image": "/floorplans/we74-98.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      },
+      {
+        "id": "we80",
+        "label": "WE 80 im DG",
+        "subtitle": "4-Zimmer, Wohnung 74,60 m²",
+        "rooms": 4,
+        "size": 74.6,
+        "rentPerSqm": 18,
+        "accessoryLabel": "",
+        "accessoryArea": 0,
+        "accessoryRentPerSqm": 0,
+        "purchasePrice": 650000,
+        "image": "/floorplans/we80.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      },
+      {
+        "id": "we91-96",
+        "label": "WE 91+96 im DG",
+        "subtitle": "3-Zimmer, Wohnung 63,60 m² + TE 96 18,70 m²",
+        "rooms": 3,
+        "size": 63.6,
+        "rentPerSqm": 18,
+        "accessoryLabel": "TE 96",
+        "accessoryArea": 18.7,
+        "accessoryRentPerSqm": 12,
+        "purchasePrice": 665000,
+        "image": "/floorplans/we91-96.png",
+        "monthlyManagement": 70,
+        "monthlyMaintenance": 30
+      }
+    ]
+  },
+  "scenarioDefaults": {
+    "apartmentId": "we80",
+    "taxTableMode": "grund",
+    "annualGrossIncome": 180000,
+    "annualGrowthRatePercent": 2,
+    "investedEquity": 60000,
+    "depotReturnRatePercent": 6
+  }
+}

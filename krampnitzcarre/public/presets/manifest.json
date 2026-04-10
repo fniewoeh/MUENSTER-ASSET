@@ -1,0 +1,14 @@
+[
+  {
+    "id": "krampnitzcarre-default",
+    "label": "Krampnitzcarre Standard"
+  },
+  {
+    "id": "krampnitzcarre-aerzteangestellt",
+    "label": "Krampnitzcarre Angestellte Ärzte"
+  },
+  {
+    "id": "krampnitzcarre-ndgl",
+    "label": "Krampnitzcarre Niedergelassen"
+  }
+]
