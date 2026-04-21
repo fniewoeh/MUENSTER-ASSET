@@ -239,6 +239,24 @@ p {
   align-items: center;
 }
 
+.config-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--base-3);
+  border-radius: var(--radius-8);
+  background: #fff;
+  color: var(--ink-strong);
+}
+
+.config-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
 .config-input,
 .config-select {
   width: 100%;

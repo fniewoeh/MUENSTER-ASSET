@@ -38,6 +38,7 @@ type Assumptions = {
   kfwLoanAmount: number
   kfwInterestRate: number
   kfwRepaymentRate: number
+  kfwBulletRepayment: boolean
   kfwGraceYears: number
   kfwGrantAmount: number
   bankInterestRate: number
@@ -114,7 +115,16 @@ type ConfigSelectField = {
   set: (config: CalculationConfig, value: string) => void
 }
 
-type ConfigField = ConfigNumberField | ConfigSelectField
+type ConfigCheckboxField = {
+  type: 'checkbox'
+  id: string
+  label: string
+  hint: string
+  get: (config: CalculationConfig) => boolean
+  set: (config: CalculationConfig, value: boolean) => void
+}
+
+type ConfigField = ConfigNumberField | ConfigSelectField | ConfigCheckboxField
 
 type ConfigSection = {
   title: string
@@ -247,7 +257,7 @@ const CONFIG_STORAGE_KEY = 'tq-home-runtime-config'
 const PREVIEW_PRESET_STORAGE_KEY = 'tq-home-preview-preset'
 const PREVIEW_PRESET_QUERY_KEY = 'previewPreset'
 const DEFAULT_PRESET_ID = 'tq-home-default'
-const growthBounds = { min: -2, max: 5, step: 0.1 }
+const growthBounds = { min: -1, max: 5, step: 0.1 }
 const growthSliderBounds = { min: -4, max: 4, step: 0.01, center: 2 }
 const equityBounds = { min: 0, max: 30000, step: 500 }
 const depotBounds = { min: 0, max: 12, step: 0.1 }
@@ -304,12 +314,12 @@ const heroSlides: HeroSlide[] = [
   {
     image: '/project/hero-tq-05.png',
     alt: 'TQ Home Etagengrundrisse',
-    caption: '1. Obergeschoss mit WE 13 und 14',
+    caption: '1. Obergeschoss mit WE 13',
   },
   {
     image: '/project/hero-tq-06.png',
     alt: 'TQ Home Wohnungstyp H',
-    caption: 'Typ H: Grundlage für WE 13 und 14',
+    caption: 'Typ H: Grundlage für WE 13',
   },
 ]
 const defaultConfigSource = deepCloneConfig(calculationConfig as CalculationConfig)
@@ -513,7 +523,7 @@ app.innerHTML = `
         <h1>Ihr Immobilien-Check in 60 Sekunden</h1>
         <p id="customer-greeting" class="customer-greeting"${appMode === 'customer' && hasCustomerIdentity(initialCustomerIdentity) ? '' : ' hidden'}>${appMode === 'customer' && hasCustomerIdentity(initialCustomerIdentity) ? `Persönliche Berechnung für ${escapeHtml(formatCustomerDisplayName(initialCustomerIdentity))}` : ''}</p>
         <p class="lead">
-          Vergleichen Sie die Wohnungen 13 und 14 aus dem Prospekt, setzen Sie Einkommen und Eigenkapital
+          Prüfen Sie Wohnung 13 aus dem Prospekt, setzen Sie Einkommen und Eigenkapital
           und sehen Sie sofort die ${projectionYears}-Jahres-Prognose für TQ Home in Bremen.
         </p>
         ${appMode === 'customer'
@@ -549,7 +559,7 @@ app.innerHTML = `
         <span class="journey-step-number">1</span>
         <div>
           <p class="journey-step-title">Wohnungsoption wählen</p>
-          <p class="journey-step-copy">Wohnung 13 oder 14 auswählen und den Typ-H-Grundriss direkt prüfen.</p>
+          <p class="journey-step-copy">Wohnung 13 auswählen und den Typ-H-Grundriss direkt prüfen.</p>
         </div>
       </article>
       <article class="journey-step">
@@ -3051,6 +3061,10 @@ function getSpecialAfa7bFactorForProjectionYear(year: number): number {
 }
 
 function calculateKfwRepaymentRate(sourceAssumptions: Assumptions): number {
+  if (sourceAssumptions.kfwBulletRepayment) {
+    return 0
+  }
+
   const loanTermYears = Math.max(Math.round(sourceAssumptions.kfwLoanTermYears), 1)
   const graceYears = Math.max(Math.round(sourceAssumptions.kfwGraceYears), 0)
   const repaymentYears = Math.max(loanTermYears - graceYears, 1)
@@ -3153,6 +3167,16 @@ function buildConfigSections(): ConfigSection[] {
           readonly: true,
           get: (value) => value.assumptions.kfwRepaymentRate,
           set: () => {},
+        },
+        {
+          type: 'checkbox',
+          id: 'config-kfw-bullet-repayment',
+          label: 'KfW endfällig',
+          hint: 'Bei Aktivierung wird das KfW-Darlehen während der KfW-Phase nur verzinst, ohne laufende Tilgung.',
+          get: (value) => value.assumptions.kfwBulletRepayment,
+          set: (value, next) => {
+            value.assumptions.kfwBulletRepayment = next
+          },
         },
         {
           type: 'number',
@@ -3278,8 +3302,8 @@ function buildConfigSections(): ConfigSection[] {
           label: 'Wertentwicklung',
           hint: 'Gemeinsame Entwicklung von Miete und Objektwert pro Jahr.',
           mode: 'percent',
-          min: -10,
-          max: 15,
+          min: -1,
+          max: 5,
           step: 0.1,
           get: (value) => value.assumptions.annualGrowthRate,
           set: (value, next) => {
@@ -3427,79 +3451,6 @@ function buildConfigSections(): ConfigSection[] {
           get: (value) => getConfigApartment(value, 'a').monthlyOtherCost,
           set: (value, next) => {
             getConfigApartment(value, 'a').monthlyOtherCost = next
-          },
-        },
-      ],
-    },
-    {
-      title: 'Wohnung B',
-      copy: 'TQ Home WE 14 aus dem Prospekt.',
-      open: false,
-      fields: [
-        {
-          type: 'number',
-          id: 'config-apartment-b-size',
-          label: 'Größe',
-          hint: 'Wohnfläche in m².',
-          mode: 'number',
-          min: 10,
-          max: 120,
-          step: 1,
-          get: (value) => getConfigApartment(value, 'b').size,
-          set: (value, next) => {
-            getConfigApartment(value, 'b').size = next
-          },
-        },
-        {
-          type: 'number',
-          id: 'config-apartment-b-purchase-price',
-          label: 'Kaufpreis',
-          hint: 'Investitionssumme vor Nebenkosten.',
-          mode: 'currency',
-          min: 0,
-          step: 1000,
-          get: (value) => getConfigApartment(value, 'b').purchasePrice,
-          set: (value, next) => {
-            getConfigApartment(value, 'b').purchasePrice = next
-          },
-        },
-        {
-          type: 'number',
-          id: 'config-apartment-b-management',
-          label: 'Verwaltung',
-          hint: 'Wohnungsspezifische Kosten pro Monat.',
-          mode: 'currency',
-          min: 0,
-          step: 5,
-          get: (value) => getConfigApartment(value, 'b').monthlyManagement,
-          set: (value, next) => {
-            getConfigApartment(value, 'b').monthlyManagement = next
-          },
-        },
-        {
-          type: 'number',
-          id: 'config-apartment-b-maintenance',
-          label: 'Rücklage',
-          hint: 'Wohnungsspezifische Instandhaltung pro Monat.',
-          mode: 'currency',
-          min: 0,
-          step: 5,
-          get: (value) => getConfigApartment(value, 'b').monthlyMaintenance,
-          set: (value, next) => {
-            getConfigApartment(value, 'b').monthlyMaintenance = next
-          },
-        },
-        {
-          type: 'number',
-          id: 'config-apartment-b-other-cost',
-          label: 'Weitere Kosten',
-          hint: 'Sonstige Monatskosten für Wohnung B.',
-          mode: 'currency',
-          min: 0,
-          step: 5,
-          get: (value) => getConfigApartment(value, 'b').monthlyOtherCost,
-          set: (value, next) => {
-            getConfigApartment(value, 'b').monthlyOtherCost = next
           },
         },
       ],
@@ -3753,11 +3704,13 @@ function renderConfigSections(sections: ConfigSection[], sourceConfig: Calculati
 }
 
 function renderConfigField(field: ConfigField, sourceConfig: CalculationConfig): string {
+  const hint = getConfigFieldHint(field, sourceConfig)
+
   if (field.type === 'select') {
     return `
       <label class="config-field" for="${field.id}">
         <span class="config-field-label">${field.label}</span>
-        <span class="config-field-hint">${field.hint}</span>
+        <span class="config-field-hint">${hint}</span>
         <span class="config-input-wrap">
           <select id="${field.id}" class="config-select">
             ${field.options(sourceConfig)
@@ -3772,13 +3725,27 @@ function renderConfigField(field: ConfigField, sourceConfig: CalculationConfig):
     `
   }
 
+  if (field.type === 'checkbox') {
+    const checkedAttribute = field.get(sourceConfig) ? ' checked' : ''
+    return `
+      <label class="config-field config-field-checkbox" for="${field.id}">
+        <span class="config-field-label">${field.label}</span>
+        <span class="config-field-hint">${hint}</span>
+        <span class="config-checkbox-wrap">
+          <input id="${field.id}" class="config-checkbox" type="checkbox"${checkedAttribute} />
+          <span>Aktivieren</span>
+        </span>
+      </label>
+    `
+  }
+
   const minAttribute = field.min !== undefined ? ` min="${field.min}"` : ''
   const maxAttribute = field.max !== undefined ? ` max="${field.max}"` : ''
   const readonlyAttribute = field.readonly ? ' disabled aria-disabled="true"' : ''
   return `
     <label class="config-field" for="${field.id}">
       <span class="config-field-label">${field.label}</span>
-      <span class="config-field-hint">${field.hint}</span>
+      <span class="config-field-hint">${hint}</span>
       <span class="config-input-wrap">
         <input
           id="${field.id}"
@@ -3794,6 +3761,16 @@ function renderConfigField(field: ConfigField, sourceConfig: CalculationConfig):
   `
 }
 
+function getConfigFieldHint(field: ConfigField, sourceConfig: CalculationConfig): string {
+  if (field.id === 'config-kfw-repayment-rate') {
+    return sourceConfig.assumptions.kfwBulletRepayment
+      ? 'Bei endfälligem KfW-Darlehen beträgt die laufende Tilgung 0,00 %.'
+      : 'Automatisch aus Zins, Laufzeit und tilgungsfreien Jahren berechnet.'
+  }
+
+  return field.hint
+}
+
 function buildConfigFromForm(form: HTMLFormElement): CalculationConfig {
   const nextConfig = deepCloneConfig(config)
   for (const section of configSections) {
@@ -3801,6 +3778,12 @@ function buildConfigFromForm(form: HTMLFormElement): CalculationConfig {
       if (field.type === 'select') {
         const input = getFormElement<HTMLSelectElement>(form, field.id)
         field.set(nextConfig, input.value)
+        continue
+      }
+
+      if (field.type === 'checkbox') {
+        const input = getFormElement<HTMLInputElement>(form, field.id)
+        field.set(nextConfig, input.checked)
         continue
       }
 
@@ -3819,10 +3802,9 @@ function buildConfigFromForm(form: HTMLFormElement): CalculationConfig {
 }
 
 function normalizeDerivedConfigValues(nextConfig: CalculationConfig): void {
-  const apartmentA = getConfigApartment(nextConfig, 'a')
-  const apartmentB = getConfigApartment(nextConfig, 'b')
-  apartmentA.subtitle = buildApartmentSubtitle('a', apartmentA.size)
-  apartmentB.subtitle = buildApartmentSubtitle('b', apartmentB.size)
+  nextConfig.apartments.forEach((apartment) => {
+    apartment.subtitle = buildApartmentSubtitle(apartment.id, apartment.size)
+  })
 
   const incomeMax = Math.max(nextConfig.incomeBounds.min, nextConfig.incomeBounds.max)
   nextConfig.incomeBounds.max = incomeMax
@@ -4041,6 +4023,11 @@ function validateConfig(candidate: unknown): CalculationConfig {
     kfwLoanAmount: asNumber(assumptionsCandidate.kfwLoanAmount, 'assumptions.kfwLoanAmount'),
     kfwInterestRate: asNumber(assumptionsCandidate.kfwInterestRate, 'assumptions.kfwInterestRate'),
     kfwRepaymentRate: legacyKfwRepaymentRate,
+    kfwBulletRepayment: asOptionalBoolean(
+      assumptionsCandidate.kfwBulletRepayment,
+      false,
+      'assumptions.kfwBulletRepayment',
+    ),
     kfwGraceYears: asNumber(assumptionsCandidate.kfwGraceYears, 'assumptions.kfwGraceYears'),
     kfwGrantAmount: asNumber(assumptionsCandidate.kfwGrantAmount, 'assumptions.kfwGrantAmount'),
     bankInterestRate: asNumber(assumptionsCandidate.bankInterestRate, 'assumptions.bankInterestRate'),
@@ -4288,6 +4275,16 @@ function asOptionalNumber(value: unknown, fallback: number, path: string): numbe
     return fallback
   }
   return asNumber(value, path)
+}
+
+function asOptionalBoolean(value: unknown, fallback: boolean, path: string): boolean {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+  if (typeof value !== 'boolean') {
+    throw new Error(`${path} muss ein Boolean sein.`)
+  }
+  return value
 }
 
 function asString(value: unknown, path: string): string {
@@ -4689,6 +4686,12 @@ function syncConfigFormValues(form: HTMLFormElement, sourceConfig: CalculationCo
       if (field.type === 'select') {
         const select = getFormElement<HTMLSelectElement>(form, field.id)
         select.value = field.get(sourceConfig)
+        continue
+      }
+
+      if (field.type === 'checkbox') {
+        const input = getFormElement<HTMLInputElement>(form, field.id)
+        input.checked = field.get(sourceConfig)
         continue
       }
 

@@ -30,6 +30,7 @@
       "kfwLoanAmount": 150000,
       "kfwInterestRate": 0.022,
       "kfwRepaymentRate": 0.024918583984016713,
+      "kfwBulletRepayment": false,
       "kfwGraceYears": 3,
       "kfwGrantAmount": 0,
       "bankInterestRate": 0.0485,
@@ -89,18 +90,6 @@
         "purchasePrice": 481245.34,
         "rentPerSqm": 14.5,
         "image": "/floorplans/wohnung-13.png",
-        "monthlyManagement": 70,
-        "monthlyMaintenance": 30,
-        "monthlyOtherCost": 0
-      },
-      {
-        "id": "b",
-        "label": "Wohnung 14",
-        "subtitle": "3-Zimmer, 83,32 m², 1. OG, Typ H",
-        "size": 83.32,
-        "purchasePrice": 481245.34,
-        "rentPerSqm": 14.5,
-        "image": "/floorplans/wohnung-14.png",
         "monthlyManagement": 70,
         "monthlyMaintenance": 30,
         "monthlyOtherCost": 0
