@@ -1,0 +1,20 @@
+{
+  "name": "krampnitzcarre2",
+  "private": true,
+  "version": "2026.04.11-0034",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build --base=/krampnitzcarre2/",
+    "preview": "vite preview",
+    "dev:fixed": "vite --host 127.0.0.1 --port 5175 --strictPort",
+    "dev:open": "vite --host 127.0.0.1 --port 5175 --strictPort --open"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.0"
+  }
+}
